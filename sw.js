@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rt321-calc-v1';
+const CACHE_NAME = 'rt321-calc-v1.1';
 const ASSETS_TO_CACHE =[
     './',
     './index.html',
