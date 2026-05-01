@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RT-321 - Exposure Calculator</title>
+    
+    <!-- PWA META TAGS -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RT-321">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23000000'/%3E%3Ccircle cx='50' cy='50' r='12' fill='%23d81b60'/%3E%3Cpath d='M43.25 38.31 L27.50 11.03 A45 45 0 0 1 72.50 11.03 L56.75 38.31 A13.5 13.5 0 0 0 43.25 38.31 Z M63.50 50.00 L95.00 50.00 A45 45 0 0 1 72.50 88.97 L56.75 61.69 A13.5 13.5 0 0 0 63.50 50.00 Z M43.25 61.69 L27.50 88.97 A45 45 0 0 1 5.00 50.00 L36.50 50.00 A13.5 13.5 0 0 0 43.25 61.69 Z' fill='%23d81b60'/%3E%3C/svg%3E">
+
+    <style>
+        :root {
+            /* ANODIZED SILVER (LIGHT MODE) */
+            --chassis: linear-gradient(145deg, #f4f4f5 0%, #d4d4d8 100%); 
+            --surface: #e5e5e5; 
+            --display-bg: #050505; 
+            
+            --ink: #18181b; 
+            --ink-dim: #71717a;
+            --display-ink: #ffffff; 
+            --display-dim: #a1a1aa;
+            
+            --accent: #d81b60; /* Dept Magenta */
+            --led-green: #10b981; /* DW Active Light */
+            
+            --border: #a1a1aa;
+            --border-display: #000000;
+            
+            --input-bg: #f4f4f5; 
+            --input-focus-bg: #ffffff;
+            
+            --overlay: rgba(0, 0, 0, 0.8); 
+            --radius: 2px; 
+            
+            /* HARD MILLED BEVELS (ZERO BLUR) */
+            --bevel-out: inset 0 1px 0 rgba(255,255,255,0.8), 0 2px 0 rgba(0,0,0,0.15);
+            --bevel-in: inset 0 2px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.8);
+            --bevel-deep: inset 0 3px 0 rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,1);
+        }
+
+        body.dark-mode {
+            /* ANODIZED GUNMETAL (DARK MODE) */
+            --chassis: linear-gradient(145deg, #27272a 0%, #09090b 100%); 
+            --surface: #18181b; 
+            --display-bg: #000000; 
+            
+            --ink: #f8fafc; 
+            --ink-dim: #94a3b8; 
+            --display-ink: #ffffff; 
+            --display-dim: #94a3b8;
+            
+            --accent: #ff2e8c; /* Neon Magenta */
+            --led-green: #22c55e; /* DW Active Light */
+            
+            --border: #3f3f46;
+            --border-display: #000000;
+            
+            --input-bg: #050505;
+            --input-focus-bg: #120a0e;
+            
+            --overlay: rgba(0, 0, 0, 0.9);
+            
+            /* HARD MILLED BEVELS (DARK) */
+            --bevel-out: inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 0 rgba(0,0,0,1);
+            --bevel-in: inset 0 2px 0 rgba(0,0,0,1), 0 1px 0 rgba(255,255,255,0.05);
+            --bevel-deep: inset 0 3px 0 rgba(0,0,0,1), 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html { scroll-padding-top: 240px; }
+
+        body {
+            margin: 0;
+            background: var(--chassis);
+            color: var(--ink);
+            font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+            -webkit-user-select: none;
+            user-select: none;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 440px;
+            margin: 0 auto;
+            padding: 0 24px 120px 24px;
+            position: relative;
+        }
+
+        /* --- THE "POLISHED GLASS" DISPLAY --- */
+        .sticky-readout {
+            position: sticky;
+            top: 0;
+            background: var(--display-bg); 
+            z-index: 100;
+            padding: 40px 24px 20px 24px;
+            margin: 0 -24px 30px -24px;
+            border-bottom: 2px solid var(--border-display);
+            box-shadow: 0 1px 0 rgba(255,255,255,0.1); 
+            overflow: hidden; /* Contains the glare */
+        }
+        
+        body.dark-mode .sticky-readout { box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05); }
+
+        /* THE SHARP GLASS GLARE */
+        .sticky-readout::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(105deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.04) 40%, transparent 40.1%, transparent 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Ensure text stays above glare */
+        .readout-header, .time-value, .telemetry-strip { position: relative; z-index: 2; }
+
+        .readout-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .readout-label {
+            font-size: 0.6rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 3px; 
+            color: var(--display-ink); /* White label */
+            display: block;
+        }
+
+        .log-btn {
+            background: transparent; 
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-size: 0.5rem; font-weight: 800;
+            padding: 3px 8px; border-radius: var(--radius);
+            cursor: pointer; letter-spacing: 1px;
+            transition: all 0.1s;
+        }
+        .log-btn:active { background: var(--accent); color: var(--display-bg); }
+
+        .time-value {
+            font-family: "SF Mono", "Menlo", monospace;
+            font-size: 4.5rem;
+            font-weight: 300;
+            letter-spacing: -3px;
+            line-height: 1;
+            margin-left: -2px;
+            color: var(--accent); /* MAGENTA HERO TEXT */
+            font-variant-numeric: tabular-nums;
+        }
+
+        .telemetry-strip {
+            display: flex;
+            gap: 16px;
+            margin-top: 20px;
+            border-top: 1px solid #222; 
+            padding-top: 12px;
+        }
+
+        .telemetry-item {
+            font-family: "SF Mono", monospace;
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: var(--display-dim);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .telemetry-item span {
+            color: var(--display-ink);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .telemetry-item.highlight span { color: var(--accent); }
+
+        /* --- NAVIGATION (TACTILE BUTTONS) --- */
+        nav { 
+            display: flex; gap: 8px; margin-bottom: 40px; 
+        }
+        
+        .nav-item {
+            flex: 1;
+            position: relative;
+            background: var(--surface); 
+            border: 1px solid var(--border); 
+            padding: 12px 0;
+            font-size: 0.6rem; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            color: var(--ink-dim); cursor: pointer;
+            border-radius: var(--radius);
+            box-shadow: var(--bevel-out);
+            transition: transform 0.1s, box-shadow 0.1s, background 0.1s, color 0.1s;
+            text-align: center;
+        }
+
+        /* The horizontal magenta bar */
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 3px;
+            background: transparent;
+            border-radius: 2px;
+            transition: background 0.2s;
+        }
+        
+        .nav-item.active { 
+            background: var(--input-bg);
+            color: var(--ink);
+            border-color: var(--border);
+            box-shadow: var(--bevel-deep);
+        }
+
+        /* Light up the bar when active (no glow) */
+        .nav-item.active::before {
+            background: var(--accent);
+        }
+
+        /* --- INPUT TARGET ZONES --- */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 16px; }
+        .field { display: flex; flex-direction: column; }
+        
+        .field-header {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: 6px; margin-left: 2px;
+            min-height: 20px; 
+        }
+        
+        .field-label-group {
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        .field label {
+            font-size: 0.55rem; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 1.5px; color: var(--ink-dim);
+            line-height: 1;
+        }
+
+        /* MATL Visual Link Badge */
+        .matl-link {
+            font-size: 0.45rem;
+            font-weight: 800;
+            color: var(--ink-dim);
+            opacity: 0.5;
+            margin-left: 4px;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+            vertical-align: middle;
+        }
+        .field:focus-within .matl-link {
+            color: var(--accent);
+            opacity: 1;
+        }
+
+        .decay-ring {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: conic-gradient(var(--accent) 100%, var(--surface) 0);
+        }
+
+        .micro-btn {
+            background: var(--surface); 
+            border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 3px 6px;
+            font-size: 0.5rem; font-weight: 800;
+            color: var(--ink-dim); cursor: pointer; letter-spacing: 1px;
+            box-shadow: var(--bevel-out);
+            transition: transform 0.1s, box-shadow 0.1s;
+            display: flex; align-items: center;
+        }
+
+        .micro-btn:active { 
+            background: var(--input-bg);
+            box-shadow: var(--bevel-in);
+        }
+
+        .micro-btn.toggle-on {
+            background: var(--input-bg);
+            color: var(--accent);
+            box-shadow: var(--bevel-deep);
+            border-color: var(--border);
+        }
+
+        /* LED INDICATOR FOR DW BUTTON */
+        .led-dot {
+            display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+            background: var(--ink-dim); margin-right: 6px;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+            transition: all 0.2s;
+        }
+        .toggle-on .led-dot {
+            background: var(--led-green);
+            box-shadow: 0 0 4px var(--led-green), inset 0 1px 1px rgba(255,255,255,0.5);
+        }
+
+        .input-zone {
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 10px 12px;
+            display: flex; align-items: baseline;
+            box-shadow: var(--bevel-in);
+            transition: all 0.1s ease;
+        }
+
+        .field:focus-within .input-zone {
+            background: var(--input-focus-bg);
+            border-color: var(--accent);
+            box-shadow: var(--bevel-deep);
+        }
+        .field:focus-within label { color: var(--ink); }
+
+        input {
+            background: none; border: none; width: 100%;
+            font-size: 1.5rem; font-weight: 500; 
+            font-family: "SF Mono", monospace;
+            color: var(--ink); outline: none; padding: 0;
+            -webkit-user-select: text; user-select: text;
+            font-variant-numeric: tabular-nums;
+        }
+
+        ::selection { background: var(--accent); color: #ffffff; }
+        body.dark-mode ::selection { background: var(--accent); color: #000000; }
+
+        .unit { font-size: 0.6rem; font-weight: 800; color: var(--ink-dim); margin-left: 8px; }
+        .field:focus-within .unit { color: var(--accent); }
+
+        /* --- BOUNDARY PANEL --- */
+        .boundary-panel {
+            margin-top: 24px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: var(--bevel-out);
+        }
+
+        .boundary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+        }
+
+        .boundary-header label {
+            font-size: 0.65rem; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 1.5px; color: var(--ink);
+        }
+
+        .boundary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .boundary-col {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .boundary-title {
+            font-size: 0.65rem; font-weight: 800; color: var(--accent);
+            text-transform: uppercase; letter-spacing: 1px;
+            border-bottom: 1px solid var(--border); padding-bottom: 4px;
+        }
+
+        .boundary-row {
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .boundary-row span {
+            font-size: 0.55rem; font-weight: 800; color: var(--ink-dim);
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        .boundary-row div {
+            font-family: "SF Mono", monospace; font-size: 0.85rem; 
+            font-weight: 600; color: var(--ink);
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* --- MODALS (CHART & LOGBOOK) --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--overlay); 
+            z-index: 999; display: none; opacity: 0; transition: opacity 0.2s ease;
+        }
+        
+        .bottom-sheet {
+            position: absolute; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%);
+            width: 100%; max-width: 440px;
+            background: var(--chassis); 
+            border-top: 1px solid var(--border);
+            border-radius: 8px 8px 0 0;
+            padding: 24px 24px 40px 24px; 
+            transition: transform 0.2s cubic-bezier(0.32, 0.72, 0, 1); 
+        }
+        
+        .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .sheet-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: var(--ink); }
+        .close-btn { background: transparent; border: none; font-size: 1.5rem; color: var(--ink-dim); cursor: pointer; padding: 0; line-height: 1; }
+        
+        .table-wrap {
+            width: 100%; overflow-x: auto; border: 1px solid var(--border); 
+            box-shadow: var(--bevel-in); background: var(--input-bg); border-radius: var(--radius);
+        }
+
+        .ref-table { width: 100%; border-collapse: collapse; }
+        .ref-table th, .ref-table td { padding: 14px 8px; text-align: center; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
+        .ref-table th { font-size: 0.55rem; color: var(--ink-dim); text-transform: uppercase; font-weight: 800; letter-spacing: 1px; background: var(--surface); }
+        .ref-table td:first-child, .ref-table th:first-child { text-align: left; }
+        .ref-table td:first-child { font-weight: 800; font-size: 0.65rem; color: var(--ink); text-transform: uppercase; letter-spacing: 1px; background: var(--surface); }
+        
+        .val-cell { 
+            font-family: "SF Mono", monospace; font-size: 1rem; font-weight: 500; 
+            cursor: pointer; transition: background 0.1s; 
+        }
+        .val-cell:active { background: var(--accent); color: var(--display-ink); }
+
+        /* EDIT MODE STYLES */
+        .edit-input {
+            width: 100%; min-width: 40px;
+            background: var(--input-bg); border: 1px solid var(--border);
+            color: var(--ink); font-family: "SF Mono", monospace;
+            font-size: 0.8rem; text-align: center; padding: 6px 4px;
+            border-radius: var(--radius); box-shadow: var(--bevel-in);
+            outline: none; -webkit-user-select: text; user-select: text;
+        }
+        .edit-input:focus { border-color: var(--accent); background: var(--input-focus-bg); box-shadow: var(--bevel-deep); }
+        .edit-input.mat-input { text-align: left; font-family: "Inter", sans-serif; font-weight: 800; text-transform: uppercase; }
+        
+        .unlock-btn {
+            background: transparent; border: 1px solid var(--border);
+            color: var(--ink-dim); padding: 6px; border-radius: var(--radius); 
+            cursor: pointer; margin-right: 15px; transition: all 0.1s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .unlock-btn.active {
+            background: var(--input-bg); color: var(--accent);
+            border-color: var(--border); box-shadow: var(--bevel-deep);
+        }
+
+        .del-btn {
+            background: transparent; border: none; color: var(--accent);
+            font-size: 1.2rem; font-weight: bold; cursor: pointer; padding: 0 4px; line-height: 1;
+        }
+        .add-btn {
+            flex: 1; background: var(--surface); border: 1px dashed var(--ink-dim);
+            color: var(--ink-dim); font-size: 0.6rem; font-weight: 800;
+            padding: 8px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+            border-radius: var(--radius); text-align: center;
+        }
+        .add-btn:active { background: var(--border); }
+
+        /* LOGBOOK STYLES (JOB FOLDERS) */
+        .log-view { display: none; }
+        .log-view.active { display: block; }
+        
+        .log-item { 
+            background: var(--surface); border: 1px solid var(--border); 
+            padding: 12px; margin-bottom: 8px; border-radius: var(--radius); 
+            cursor: pointer; display: flex; justify-content: space-between; align-items: center; 
+            box-shadow: var(--bevel-out); 
+        }
+        .log-item:active { background: var(--input-bg); box-shadow: var(--bevel-in); }
+        
+        .log-title { font-size: 0.7rem; font-weight: 800; color: var(--ink); text-transform: uppercase; letter-spacing: 1px; }
+        .log-date { font-size: 0.55rem; color: var(--ink-dim); font-family: "SF Mono", monospace; margin-top: 4px; }
+        
+        .log-textarea { 
+            width: 100%; height: 200px; background: var(--input-bg); border: 1px solid var(--border); 
+            color: var(--ink); font-family: "SF Mono", monospace; font-size: 0.7rem; padding: 12px; 
+            border-radius: var(--radius); box-shadow: var(--bevel-in); outline: none; resize: none; 
+            -webkit-user-select: text; user-select: text; margin-bottom: 12px; 
+        }
+        .log-textarea:focus { border-color: var(--accent); background: var(--input-focus-bg); box-shadow: var(--bevel-deep); }
+        
+        .log-title-input { 
+            width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border); 
+            color: var(--ink); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; 
+            letter-spacing: 1px; padding: 8px 0; margin-bottom: 12px; outline: none; 
+        }
+        .log-title-input:focus { border-color: var(--accent); }
+
+        footer { margin-top: 60px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 20px; }
+        
+        .footer-btn { 
+            background: var(--surface); 
+            border: 1px solid var(--border); 
+            padding: 8px 14px; font-size: 0.55rem; font-weight: 800; 
+            text-transform: uppercase; letter-spacing: 1.5px; 
+            color: var(--ink-dim); border-radius: var(--radius); cursor: pointer; 
+            box-shadow: var(--bevel-out);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .footer-btn:active { 
+            background: var(--input-bg); box-shadow: var(--bevel-in); 
+            transform: translate(1px, 1px);
+        }
+
+        /* MILLED COPYRIGHT TEXT */
+        .copyright {
+            text-align: center;
+            margin-top: 32px;
+            font-size: 0.45rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--ink-dim);
+            opacity: 0.6;
+            text-shadow: 0 1px 1px rgba(255, 255, 255, 0.5);
+        }
+        body.dark-mode .copyright {
+            text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.8);
+        }
+        
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    </style>
+</head>
+<body class="light-mode">
+
+    <div class="app-container">
+        <!-- MAIN DISPLAY -->
+        <div class="sticky-readout">
+            <div class="readout-header">
+                <span class="readout-label" id="ctxLabel">Required Exposure</span>
+                <button id="logBtn" class="log-btn" onclick="logCurrent()">+ LOG</button>
+            </div>
+            <div id="mainTime" class="time-value">00:00</div>
+            
+            <div class="telemetry-strip" id="telemetryBox">
+                <div class="telemetry-item" id="tel1">MATL <span>0.500"</span></div>
+                <div class="telemetry-item" id="tel2">ACT <span>0.0 Ci</span></div>
+            </div>
+        </div>
+
+        <!-- NAVIGATION -->
+        <nav>
+            <button class="nav-item active" onclick="switchTab(this, 'exposure')">Exposure</button>
+            <button class="nav-item" onclick="switchTab(this, 'adjustment')">Adjustment</button>
+            <button class="nav-item" onclick="switchTab(this, 'density')">Density</button>
+        </nav>
+
+        <main>
+            <!-- EXPOSURE FORMULA -->
+            <div id="exposure" class="tab-content active">
+                <div class="grid">
+                    <div class="field">
+                        <div class="field-header">
+                            <label>Target Dose</label>
+                            <button class="micro-btn" onclick="openModal('chartOverlay')">TABLE</button>
+                        </div>
+                        <div class="input-zone">
+                            <input type="text" inputmode="decimal" pattern="[0-9\.]*" id="targetExp" value="2.8">
+                            <span class="unit">R</span>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="field-header"><label>Original Ci</label></div>
+                        <div class="input-zone">
+                            <input type="text" inputmode="decimal" pattern="[0-9\.]*" id="curies" value="100">
+                            <span class="unit">Ci</span>
+                        </div>
+                    </div>
+                    
+                    <div class="field">
+                        <div class="field-header">
+                            <label>Pipe Wall <span class="matl-link">→ MATL</span></label>
+                            <button id="dwToggleBtn" class="micro-btn toggle-on" onclick="toggleDW()">
+                                <span class="led-dot"></span>DW[x2]
+                            </button>
+                        </div>
+                        <div class="input-zone">
+                            <input type="text" inputmode="decimal" pattern="[0-9\.]*" id="pipeThick" value="0.250">
+                            <span class="unit">In</span>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="field-header">
+                            <label>Shim <span class="matl-link">→ MATL</span></label>
+                        </div>
+                        <div class="input-zone">
+                            <input type="text" inputmode="decimal" pattern="[0-9\.]*" id="shimThick" value="0.0">
+                            <span class="unit">In</span>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <div class="field-header"><label>Distance</label></div>
+                        <div class="input-zone">
+                            <input type="text" inputmode="decimal" pattern="[0-9\.]*" id="sfd" value="18">
+                            <span class="unit">In</span>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="field-header">
+                            <div class="field-label-group">
+                                <label>Source Age</label>
+                                <div class="decay-ring" id="decayRing"></div>
+                            </div>
+                        </div>
+                        <div class="input-zone">
+                            <input type="text" inputmode="decimal" pattern="[0-9\.]*" id="age" value="0">
+                            <span class="unit">Mo</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RADIATION BOUNDARY PANEL -->
+                <div class="boundary-panel">
+                    <div class="boundary-header">
+                        <label>Collimator Ratio</label>
+                        <div class="input-zone" style="width: 100px; padding: 6px 10px;">
+                            <input type="text" inputmode="decimal" pattern="[0-9\.]*" id="collimator" value="16" style="font-size: 1.2rem;">
+                            <span class="unit">:1</span>
+                        </div>
+                    </div>
+                    <div class="boundary-grid">
+                        <div class="boundary-col">
+                            <div class="boundary-title">100 mR/hr</div>
+                            <div class="boundary-row"><span>UNSHIELDED</span><div id="unshielded100">0 FT</div></div>
+                            <div class="boundary-row"><span>SHIELDED</span><div id="shielded100">0 FT</div></div>
+                        </div>
+                        <div class="boundary-col">
+                            <div class="boundary-title">2 mR/hr</div>
+                            <div class="boundary-row"><span>UNSHIELDED</span><div id="unshielded2">0 FT</div></div>
+                            <div class="boundary-row"><span>SHIELDED</span><div id="shielded2">0 FT</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADJUSTMENT -->
+            <div id="adjustment" class="tab-content">
+                <div class="grid">
+                    <div class="field" style="grid-column: span 2;">
+                        <div class="field-header"><label>Base Exposure Time</label></div>
+                        <div class="input-zone"><input type="text" inputmode="decimal" pattern="[0-9\.]*" id="t1" value="1.0"><span class="unit">Min</span></div>
+                    </div>
+                    <div class="field"><div class="field-header"><label>Old SFD</label></div><div class="input-zone"><input type="text" inputmode="decimal" pattern="[0-9\.]*" id="d1" value="12"></div></div>
+                    <div class="field"><div class="field-header"><label>New SFD</label></div><div class="input-zone"><input type="text" inputmode="decimal" pattern="[0-9\.]*" id="d2" value="24"></div></div>
+                    <div class="field"><div class="field-header"><label>Old Ci</label></div><div class="input-zone"><input type="text" inputmode="decimal" pattern="[0-9\.]*" id="c1" value="100"></div></div>
+                    <div class="field"><div class="field-header"><label>New Ci</label></div><div class="input-zone"><input type="text" inputmode="decimal" pattern="[0-9\.]*" id="c2" value="100"></div></div>
+                </div>
+            </div>
+
+            <!-- DENSITY -->
+            <div id="density" class="tab-content">
+                <div class="grid">
+                    <div class="field" style="grid-column: span 2;">
+                        <div class="field-header"><label>Initial Exposure Time</label></div>
+                        <div class="input-zone"><input type="text" inputmode="decimal" pattern="[0-9\.]*" id="dt1" value="1.0"><span class="unit">Min</span></div>
+                    </div>
+                    <div class="field"><div class="field-header"><label>Current Density</label></div><div class="input-zone"><input type="text" inputmode="decimal" pattern="[0-9\.]*" id="dens1" value="2.0"></div></div>
+                    <div class="field"><div class="field-header"><label>Target Density</label></div><div class="input-zone"><input type="text" inputmode="decimal" pattern="[0-9\.]*" id="dens2" value="3.0"></div></div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <button class="footer-btn" onclick="shareApp()">SHARE</button>
+            <button class="footer-btn" onclick="openModal('logOverlay')">LOGS</button>
+            <button class="footer-btn" onclick="toggleTheme()">MODE</button>
+        </footer>
+        
+        <div class="copyright">© 2026 RT-321. All rights reserved.</div>
+    </div>
+
+    <!-- TARGET EXPOSURE CHART OVERLAY -->
+    <div id="chartOverlay" class="modal-overlay" onclick="closeModal('chartOverlay', event)">
+        <div class="bottom-sheet" onclick="event.stopPropagation()">
+            <div class="sheet-header">
+                <div class="sheet-title">Exposure Matrix</div>
+                <div style="display:flex; align-items:center;">
+                    <button id="chartEditBtn" class="unlock-btn" onclick="toggleChartEdit()">
+                        <svg id="iconLock" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </button>
+                    <button class="close-btn" onclick="closeModal('chartOverlay', event)">×</button>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="ref-table">
+                    <thead id="chartHead"></thead>
+                    <tbody id="chartBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGBOOK OVERLAY (JOB FOLDERS) -->
+    <div id="logOverlay" class="modal-overlay" onclick="closeModal('logOverlay', event)">
+        <div class="bottom-sheet" onclick="event.stopPropagation()">
+            
+            <!-- LIST VIEW -->
+            <div id="logListView" class="log-view active">
+                <div class="sheet-header">
+                    <div class="sheet-title">Job Folders</div>
+                    <button class="close-btn" onclick="closeModal('logOverlay', event)">×</button>
+                </div>
+                <!-- ADD & EXPORT BUTTONS -->
+                <div style="display:flex; gap:10px; margin-bottom: 16px;">
+                    <button class="add-btn" onclick="createNewLog()">+ NEW JOB FOLDER</button>
+                    <button class="add-btn" onclick="exportLogs()">↓ EXPORT ALL</button>
+                </div>
+                <div id="logList"></div>
+            </div>
+
+            <!-- DETAIL VIEW -->
+            <div id="logDetailView" class="log-view">
+                <div class="sheet-header">
+                    <button class="micro-btn" onclick="closeLogDetail()">← BACK</button>
+                    <div class="sheet-title">Job Details</div>
+                    <button class="close-btn" onclick="closeModal('logOverlay', event)">×</button>
+                </div>
+                <input type="text" id="logTitleInput" class="log-title-input" placeholder="Job Name..." oninput="saveActiveLog()">
+                <textarea id="logTextarea" class="log-textarea" placeholder="Tap [+ LOG] on the main screen to save a calculation here..." oninput="saveActiveLog()"></textarea>
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button class="add-btn" onclick="copyActiveLog()">COPY ALL</button>
+                    <button class="add-btn" style="border-color:var(--accent); color:var(--accent);" onclick="deleteActiveLog()">DELETE JOB</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- PWA SERVICE WORKER REGISTRATION -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful');
+                }, err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
+
+    <script>
+        // PHYSICS CONSTANTS
+        const HALF_LIFE_DAYS = 73.83;
+        const DAYS_IN_MONTH = 30.4375;
+        const GAMMA = 5.2;
+        const ATTN = 1.1;
+
+        let currentTab = 'exposure';
+        let isDoubleWall = true; 
+
+        // --- STATE PERSISTENCE ---
+        const INPUT_IDS =['targetExp', 'curies', 'pipeThick', 'shimThick', 'sfd', 'age', 'collimator', 't1', 'd1', 'd2', 'c1', 'c2', 'dt1', 'dens1', 'dens2'];
+
+        function saveState() {
+            const state = { isDoubleWall: isDoubleWall };
+            INPUT_IDS.forEach(id => { 
+                const el = document.getElementById(id);
+                if(el) state[id] = el.value; 
+            });
+            localStorage.setItem('gammaCalcState', JSON.stringify(state));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('gammaCalcState');
+            if (saved) {
+                const state = JSON.parse(saved);
+                INPUT_IDS.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && state[id] !== undefined) el.value = state[id];
+                });
+                if (state.isDoubleWall !== undefined) {
+                    isDoubleWall = state.isDoubleWall;
+                    const btn = document.getElementById('dwToggleBtn');
+                    if(btn) {
+                        if (isDoubleWall) btn.classList.add('toggle-on');
+                        else btn.classList.remove('toggle-on');
+                    }
+                }
+            }
+            if(localStorage.getItem('gammaTheme') === 'dark') document.body.classList.add('dark-mode');
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('gammaTheme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        }
+
+        // --- MODAL LOGIC ---
+        function openModal(id) {
+            if(id === 'chartOverlay') renderChart();
+            if(id === 'logOverlay') {
+                document.getElementById('logDetailView').classList.remove('active');
+                document.getElementById('logListView').classList.add('active');
+                renderLogList();
+            }
+            const overlay = document.getElementById(id);
+            overlay.style.display = 'block';
+            void overlay.offsetWidth;
+            overlay.style.opacity = '1';
+            overlay.querySelector('.bottom-sheet').style.transform = 'translateX(-50%) translateY(0)';
+        }
+
+        function closeModal(id, e) {
+            if (e) e.stopPropagation();
+            if(id === 'chartOverlay' && isChartEditMode) toggleChartEdit(); 
+            
+            const overlay = document.getElementById(id);
+            overlay.style.opacity = '0';
+            overlay.querySelector('.bottom-sheet').style.transform = 'translateX(-50%) translateY(100%)';
+            setTimeout(() => { overlay.style.display = 'none'; }, 300);
+        }
+
+        // --- LOGBOOK LOGIC (JOB FOLDERS) ---
+        let logs = JSON.parse(localStorage.getItem('gammaLogs')) ||[];
+        let activeLogId = null;
+
+        function renderLogList() {
+            const list = document.getElementById('logList');
+            list.innerHTML = '';
+            if(logs.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--ink-dim); font-size:0.6rem; text-transform:uppercase; letter-spacing:1px;">No jobs found</div>';
+                return;
+            }
+            logs.forEach(log => {
+                const div = document.createElement('div');
+                div.className = 'log-item';
+                div.onclick = () => openLogDetail(log.id);
+                div.innerHTML = `<div><div class="log-title">${log.title}</div><div class="log-date">${log.date}</div></div><div style="color:var(--accent); font-weight:bold;">›</div>`;
+                list.appendChild(div);
+            });
+        }
+
+        function createNewLog() {
+            const id = Date.now().toString();
+            const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const newLog = { id: id, title: `JOB - ${dateStr}`, date: dateStr, content: "" };
+            logs.unshift(newLog);
+            saveLogs();
+            openLogDetail(id);
+        }
+
+        function exportLogs() {
+            if (logs.length === 0) {
+                alert("No logs to export.");
+                return;
+            }
+            
+            let exportText = "GAMMA EXPOSURE LOGS\n====================\n\n";
+            logs.forEach(log => {
+                exportText += `--- ${log.title} (${log.date}) ---\n`;
+                exportText += `${log.content}\n\n`;
+            });
+
+            // Create a downloadable text file locally on the device
+            const blob = new Blob([exportText], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `Gamma_Logs_${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function openLogDetail(id) {
+            activeLogId = id;
+            const log = logs.find(l => l.id === id);
+            document.getElementById('logTitleInput').value = log.title;
+            document.getElementById('logTextarea').value = log.content;
+            document.getElementById('logListView').classList.remove('active');
+            document.getElementById('logDetailView').classList.add('active');
+        }
+
+        function closeLogDetail() {
+            activeLogId = null;
+            document.getElementById('logDetailView').classList.remove('active');
+            document.getElementById('logListView').classList.add('active');
+            renderLogList();
+        }
+
+        function saveActiveLog() {
+            if(!activeLogId) return;
+            const log = logs.find(l => l.id === activeLogId);
+            if(log) {
+                log.title = document.getElementById('logTitleInput').value;
+                log.content = document.getElementById('logTextarea').value;
+                saveLogs();
+            }
+        }
+
+        function saveLogs() {
+            localStorage.setItem('gammaLogs', JSON.stringify(logs));
+        }
+
+        function deleteActiveLog() {
+            if(confirm("Delete this job folder?")) {
+                logs = logs.filter(l => l.id !== activeLogId);
+                saveLogs();
+                closeLogDetail();
+            }
+        }
+
+        function copyActiveLog() {
+            const text = document.getElementById('logTextarea').value;
+            navigator.clipboard.writeText(text);
+            alert("Job log copied to clipboard!");
+        }
+
+        function logCurrent() {
+            if(logs.length === 0) {
+                const id = Date.now().toString();
+                const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                logs.unshift({ id: id, title: `JOB - ${dateStr}`, date: dateStr, content: "" });
+            }
+            const targetLog = logs[0]; // Always append to the most recent job
+
+            const now = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            let entry = "";
+            const timeRes = document.getElementById("mainTime").innerText;
+
+            if (currentTab === 'exposure') {
+                const exp = document.getElementById('targetExp').value;
+                const cur = document.getElementById('curies').value;
+                const pipe = document.getElementById('pipeThick').value;
+                const shim = document.getElementById('shimThick').value;
+                const sfd = document.getElementById('sfd').value;
+                const dw = isDoubleWall ? "[DW]" : "[SW]";
+                entry = `[${now}] EXPOSURE\nTarg: ${exp}R | Src: ${cur}Ci\nMatl: ${pipe}" ${dw} + ${shim}" Shim\nSFD: ${sfd}"\n>> TIME: ${timeRes}\n`;
+            } else if (currentTab === 'adjustment') {
+                const t1 = document.getElementById('t1').value;
+                const d1 = document.getElementById('d1').value;
+                const d2 = document.getElementById('d2').value;
+                const c1 = document.getElementById('c1').value;
+                const c2 = document.getElementById('c2').value;
+                entry = `[${now}] ADJUSTMENT\nBase: ${t1}m | SFD: ${d1}"->${d2}" | Ci: ${c1}->${c2}\n>> TIME: ${timeRes}\n`;
+            } else if (currentTab === 'density') {
+                const dt1 = document.getElementById('dt1').value;
+                const dens1 = document.getElementById('dens1').value;
+                const dens2 = document.getElementById('dens2').value;
+                entry = `[${now}] DENSITY\nBase: ${dt1}m | Dens: ${dens1}->${dens2}\n>> TIME: ${timeRes}\n`;
+            }
+
+            targetLog.content = entry + "\n" + targetLog.content;
+            saveLogs();
+
+            // If the detail view is currently open to this log, update the textarea
+            if(activeLogId === targetLog.id) {
+                document.getElementById('logTextarea').value = targetLog.content;
+            }
+            
+            // Visual feedback
+            const btn = document.getElementById('logBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "SAVED!";
+            btn.style.background = "var(--accent)";
+            btn.style.color = "var(--display-bg)";
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.background = "transparent";
+                btn.style.color = "var(--accent)";
+            }, 1000);
+        }
+
+        // --- DYNAMIC CHART LOGIC ---
+        const DEFAULT_CHART = {
+            cols:["Fuji 100", "Fuji 80", "Fuji 50"],
+            rows:[
+                { mat: "Steel", vals:[2.8, 3.8, 5.5] },
+                { mat: "Inconel", vals:[3.5, 4.8, 6.0] },
+                { mat: "CuNi", vals:[4.0, 5.2, 6.5] }
+            ]
+        };
+
+        const SVG_LOCK = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+        const SVG_UNLOCK = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>`;
+
+        let chartData = JSON.parse(localStorage.getItem('gammaChartData')) || DEFAULT_CHART;
+        let isChartEditMode = false;
+
+        function syncChartDataFromDOM() {
+            if(!isChartEditMode) return;
+            chartData.cols.forEach((col, i) => {
+                const el = document.getElementById(`col_${i}`);
+                if(el) chartData.cols[i] = el.value;
+            });
+            chartData.rows.forEach((row, r) => {
+                const elMat = document.getElementById(`mat_${r}`);
+                if(elMat) chartData.rows[r].mat = elMat.value;
+                row.vals.forEach((val, c) => {
+                    const elVal = document.getElementById(`val_${r}_${c}`);
+                    if(elVal) chartData.rows[r].vals[c] = parseFloat(elVal.value) || 0;
+                });
+            });
+        }
+
+        function renderChart() {
+            const thead = document.getElementById('chartHead');
+            const tbody = document.getElementById('chartBody');
+            
+            let headHtml = `<tr><th>Material</th>`;
+            chartData.cols.forEach((col, i) => {
+                if(isChartEditMode) {
+                    headHtml += `<th>
+                        <div style="display:flex; align-items:center; gap:4px;">
+                            <input type="text" class="edit-input" id="col_${i}" value="${col}">
+                            <button class="del-btn" onclick="delCol(${i})">×</button>
+                        </div>
+                    </th>`;
+                } else {
+                    headHtml += `<th>${col}</th>`;
+                }
+            });
+            if(isChartEditMode) headHtml += `<th><button class="add-btn" onclick="addCol()">+ COL</button></th>`;
+            headHtml += `</tr>`;
+            thead.innerHTML = headHtml;
+
+            let bodyHtml = '';
+            chartData.rows.forEach((row, r) => {
+                bodyHtml += `<tr>`;
+                if(isChartEditMode) {
+                    bodyHtml += `<td>
+                        <div style="display:flex; align-items:center; gap:4px;">
+                            <button class="del-btn" onclick="delRow(${r})">×</button>
+                            <input type="text" class="edit-input mat-input" id="mat_${r}" value="${row.mat}">
+                        </div>
+                    </td>`;
+                    row.vals.forEach((val, c) => {
+                        bodyHtml += `<td><input type="text" inputmode="decimal" pattern="[0-9\.]*" class="edit-input" id="val_${r}_${c}" value="${val}"></td>`;
+                    });
+                    bodyHtml += `<td></td>`; 
+                } else {
+                    bodyHtml += `<td>${row.mat}</td>`;
+                    row.vals.forEach((val) => {
+                        bodyHtml += `<td class="val-cell" onclick="setTargetValue(${val})">${val}</td>`;
+                    });
+                }
+                bodyHtml += `</tr>`;
+            });
+
+            if(isChartEditMode) {
+                bodyHtml += `<tr><td colspan="${chartData.cols.length + 2}"><button class="add-btn" style="margin-top:8px;" onclick="addRow()">+ ADD ROW</button></td></tr>`;
+            }
+
+            tbody.innerHTML = bodyHtml;
+        }
+
+        function toggleChartEdit() {
+            const btn = document.getElementById('chartEditBtn');
+            if(isChartEditMode) {
+                syncChartDataFromDOM();
+                localStorage.setItem('gammaChartData', JSON.stringify(chartData));
+                btn.classList.remove('active');
+                btn.innerHTML = SVG_LOCK;
+            } else {
+                btn.classList.add('active');
+                btn.innerHTML = SVG_UNLOCK;
+            }
+            isChartEditMode = !isChartEditMode;
+            renderChart();
+        }
+
+        function addCol() {
+            syncChartDataFromDOM();
+            chartData.cols.push("New");
+            chartData.rows.forEach(r => r.vals.push(0));
+            renderChart();
+        }
+
+        function addRow() {
+            syncChartDataFromDOM();
+            chartData.rows.push({ mat: "New", vals: new Array(chartData.cols.length).fill(0) });
+            renderChart();
+        }
+
+        function delCol(c) {
+            if(chartData.cols.length <= 1) return; 
+            syncChartDataFromDOM();
+            chartData.cols.splice(c, 1);
+            chartData.rows.forEach(r => r.vals.splice(c, 1));
+            renderChart();
+        }
+
+        function delRow(r) {
+            if(chartData.rows.length <= 1) return; 
+            syncChartDataFromDOM();
+            chartData.rows.splice(r, 1);
+            renderChart();
+        }
+
+        function setTargetValue(val) {
+            if(isChartEditMode) return; 
+            document.getElementById('targetExp').value = val;
+            saveState();
+            closeModal('chartOverlay');
+            runCalc();
+        }
+
+        // --- SHARE LOGIC ---
+        function shareApp() {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'RT-321 Exposure Calculator',
+                    text: 'Check out this free RT exposure calculator. It works completely offline.',
+                    url: window.location.href
+                }).catch(console.error);
+            } else {
+                navigator.clipboard.writeText(window.location.href);
+                alert("App link copied to clipboard!");
+            }
+        }
+
+        // --- CORE LOGIC ---
+        function toggleDW() {
+            isDoubleWall = !isDoubleWall;
+            const btn = document.getElementById('dwToggleBtn');
+            if (isDoubleWall) {
+                btn.classList.add('toggle-on');
+            } else {
+                btn.classList.remove('toggle-on');
+            }
+            saveState();
+            runCalc();
+        }
+
+        function runCalc() {
+            const tel1 = document.getElementById('tel1');
+            const tel2 = document.getElementById('tel2');
+
+            if (currentTab === 'exposure') {
+                const exp = parseFloat(document.getElementById('targetExp').value) || 0;
+                const cur = parseFloat(document.getElementById('curies').value) || 0;
+                
+                const pipeRaw = parseFloat(document.getElementById('pipeThick').value) || 0;
+                const pipe = isDoubleWall ? (pipeRaw * 2) : pipeRaw;
+                const shim = parseFloat(document.getElementById('shimThick').value) || 0;
+                const thk = pipe + shim;
+                
+                const sfd = parseFloat(document.getElementById('sfd').value) || 0;
+                const age = parseFloat(document.getElementById('age').value) || 0;
+
+                let currentAct = 0;
+
+                if (exp && cur && sfd) {
+                    const decayFactor = Math.pow(0.5, age / (HALF_LIFE_DAYS / DAYS_IN_MONTH));
+                    currentAct = cur * decayFactor;
+                    const rate = ((currentAct * GAMMA) / Math.pow(sfd / 12, 2)) * Math.exp(-ATTN * thk);
+                    
+                    formatDisplay((exp / rate) * 60);
+
+                    tel1.innerHTML = `MATL <span>${thk.toFixed(3)}"</span>`;
+                    tel2.innerHTML = `ACT <span>${currentAct.toFixed(1)} Ci</span>`;
+                    tel1.style.display = 'block'; tel2.style.display = 'block';
+
+                    const decayPercent = Math.max(0, decayFactor * 100);
+                    document.getElementById('decayRing').style.background = `conic-gradient(var(--accent) ${decayPercent}%, var(--chassis) 0)`;
+                } else {
+                    formatDisplay(0);
+                    tel1.innerHTML = `MATL <span>---</span>`;
+                    tel2.innerHTML = `ACT <span>---</span>`;
+                    document.getElementById('decayRing').style.background = `var(--chassis)`;
+                }
+
+                // Calculate Boundaries (Safe Null Checks)
+                let colInput = document.getElementById('collimator');
+                let colRatio = colInput ? parseFloat(colInput.value) : 16;
+                if (!colRatio || colRatio <= 0) colRatio = 1; 
+
+                if (currentAct > 0) {
+                    const i0 = currentAct * 5200; 
+                    const id = i0 / colRatio;     
+
+                    const u100 = document.getElementById('unshielded100');
+                    if(u100) u100.innerText = Math.round(Math.sqrt(i0 / 100)) + " FT";
+                    
+                    const u2 = document.getElementById('unshielded2');
+                    if(u2) u2.innerText = Math.round(Math.sqrt(i0 / 2)) + " FT";
+                    
+                    const s100 = document.getElementById('shielded100');
+                    if(s100) s100.innerText = Math.round(Math.sqrt(id / 100)) + " FT";
+                    
+                    const s2 = document.getElementById('shielded2');
+                    if(s2) s2.innerText = Math.round(Math.sqrt(id / 2)) + " FT";
+                } else {
+                    const u100 = document.getElementById('unshielded100');
+                    if(u100) u100.innerText = "0 FT";
+                    const u2 = document.getElementById('unshielded2');
+                    if(u2) u2.innerText = "0 FT";
+                    const s100 = document.getElementById('shielded100');
+                    if(s100) s100.innerText = "0 FT";
+                    const s2 = document.getElementById('shielded2');
+                    if(s2) s2.innerText = "0 FT";
+                }
+
+            } else if (currentTab === 'adjustment') {
+                const t1 = parseFloat(document.getElementById('t1').value) || 0;
+                const d1 = parseFloat(document.getElementById('d1').value) || 0;
+                const d2 = parseFloat(document.getElementById('d2').value) || 0;
+                const c1 = parseFloat(document.getElementById('c1').value) || 0;
+                const c2 = parseFloat(document.getElementById('c2').value) || 0;
+                if (t1 && d1 && d2 && c1 && c2) {
+                    const ratio = Math.pow(d2 / d1, 2) * (c1 / c2);
+                    formatDisplay(t1 * ratio);
+                    
+                    tel1.innerHTML = `FACTOR <span>${ratio.toFixed(2)}x</span>`;
+                    tel2.style.display = 'none';
+                } else {
+                    formatDisplay(0);
+                    tel1.innerHTML = `FACTOR <span>---</span>`;
+                }
+            } else if (currentTab === 'density') {
+                const t1 = parseFloat(document.getElementById('dt1').value) || 0;
+                const d1 = parseFloat(document.getElementById('dens1').value) || 0;
+                const d2 = parseFloat(document.getElementById('dens2').value) || 0;
+                if (t1 && d1 && d2) {
+                    formatDisplay(t1 * (d2 / d1));
+                    
+                    const shift = d2 - d1;
+                    const sign = shift > 0 ? '+' : '';
+                    tel1.innerHTML = `SHIFT <span>${sign}${shift.toFixed(2)} ΔD</span>`;
+                    tel2.style.display = 'none';
+                } else {
+                    formatDisplay(0);
+                    tel1.innerHTML = `SHIFT <span>---</span>`;
+                }
+            }
+        }
+
+        function formatDisplay(mins) {
+            // Safer fail-catch for NaN or Infinity resulting from empty or 0 value inputs
+            if (!mins || mins <= 0 || !isFinite(mins) || isNaN(mins)) {
+                document.getElementById("mainTime").innerText = "00:00";
+                return;
+            }
+            
+            let h = Math.floor(mins / 60);
+            let m = Math.floor(mins % 60);
+            let s = Math.round((mins * 60) % 60);
+            
+            if (s >= 60) { s = 0; m++; }
+            if (m >= 60) { m = 0; h++; }
+
+            const hh = h.toString().padStart(2, '0');
+            const mm = m.toString().padStart(2, '0');
+            const ss = s.toString().padStart(2, '0');
+
+            document.getElementById("mainTime").innerText = h > 0 ? `${hh}:${mm}:${ss}` : `${mm}:${ss}`;
+        }
+
+        function switchTab(el, id) {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById(id).classList.add('active');
+            
+            const labels = {'exposure': 'Required Exposure', 'adjustment': 'Adjusted Exposure', 'density': 'Corrected Exposure'};
+            document.getElementById('ctxLabel').innerText = labels[id];
+            
+            currentTab = id;
+            runCalc();
+        }
+
+        const pipeInput = document.getElementById('pipeThick');
+        const shimInput = document.getElementById('shimThick');
+
+        function highlightMatl() { if(currentTab === 'exposure') document.getElementById('tel1').classList.add('highlight'); }
+        function unhighlightMatl() { document.getElementById('tel1').classList.remove('highlight'); }
+
+        pipeInput.addEventListener('focus', highlightMatl);
+        pipeInput.addEventListener('blur', unhighlightMatl);
+        shimInput.addEventListener('focus', highlightMatl);
+        shimInput.addEventListener('blur', unhighlightMatl);
+
+        document.querySelectorAll('input').forEach(inp => {
+            inp.addEventListener('focus', function() {
+                setTimeout(() => { this.select(); this.setSelectionRange(0, 9999); }, 10);
+            });
+            inp.addEventListener('click', function() { this.select(); this.setSelectionRange(0, 9999); });
+            inp.addEventListener('mouseup', (e) => { e.preventDefault(); });
+        });
+
+        document.addEventListener('input', (e) => {
+            if (e.target.tagName === 'INPUT' && !e.target.classList.contains('edit-input')) {
+                saveState();
+                runCalc();
+            }
+        });
+
+        window.onload = () => {
+            loadState();
+            renderChart();
+            runCalc();
+        };
+    </script>
+</body>
+</html>
