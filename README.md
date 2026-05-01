@@ -1,0 +1,3 @@
+DISCLAIMER OF LIABILITY:
+RT-321™ is provided as a reference tool only. While every effort has been made to ensure the accuracy of the formulas and calculations, this application is provided "as is" without warranties of any kind.
+This tool does not replace professional training, certified dosimetry, or physical radiation survey meters. The user assumes all risk and liability associated with the use of this application. It is the sole responsibility of the certified radiographer to verify all exposure times, decay calculations, and barricade distances in accordance with local, state, and federal regulations (e.g., NRC, OSHA) prior to exposing any radioactive source.
