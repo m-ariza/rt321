@@ -11,10 +11,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="RT-321">
+    
     <!-- Standard Browser Tab Icon -->
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<!-- Apple iOS Home Screen Icon -->
-<link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <!-- Apple iOS Home Screen Icon -->
+    <link rel="apple-touch-icon" href="icon-192.png">
 
     <style>
         :root {
@@ -45,7 +46,7 @@
             --input-focus-bg: #ffffff;
             
             --overlay: rgba(0, 0, 0, 0.8); 
-            --radius: 3px; 
+            --radius: 4px; /* UX Edit: Softened slightly for approachability */
             
             /* HARD MILLED BEVELS (ZERO BLUR) */
             --bevel-out: inset 0 1px 0 rgba(255,255,255,0.8), 0 2px 0 rgba(0,0,0,0.15);
@@ -109,7 +110,8 @@
             max-width: 440px;
             height: 100%;
             margin: 0 auto;
-            padding: 0 16px env(safe-area-inset-bottom, 12px) 16px;
+            /* UX Edit: Added slight top padding for modern devices */
+            padding: env(safe-area-inset-top, 8px) 16px env(safe-area-inset-bottom, 12px) 16px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -123,7 +125,8 @@
             margin-right: calc(-50vw + 50%);
             background: var(--display-bg); 
             z-index: 100;
-            padding: 14px 0 8px 0;
+            /* UX Edit: Increased top and bottom padding for visual relief */
+            padding: 18px 0 12px 0;
             border-bottom: 2px solid var(--border-display);
             box-shadow: 0 1px 0 rgba(255,255,255,0.1); 
             flex-shrink: 0;
@@ -144,7 +147,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2px;
+            margin-bottom: 6px; /* UX Edit: Breathing room above the clock */
         }
 
         .readout-label {
@@ -160,7 +163,7 @@
             border: 1px solid var(--accent);
             color: var(--accent);
             font-size: 0.65rem; font-weight: 800;
-            padding: 3px 8px; border-radius: var(--radius);
+            padding: 4px 10px; border-radius: var(--radius); /* UX Edit: Slightly wider touch target */
             cursor: pointer; letter-spacing: 1px;
             transition: all 0.1s;
         }
@@ -170,7 +173,7 @@
         .svg-time-container {
             width: 100%;
             height: 60px;
-            margin: 2px 0;
+            margin: 4px 0;
             display: flex;
             align-items: center;
         }
@@ -200,9 +203,9 @@
             display: flex;
             justify-content: flex-start;
             align-items: center;
-            margin-top: 4px;
+            margin-top: 8px; /* UX Edit: Separated from the giant text */
             border-top: 1px solid #222222; 
-            padding-top: 6px;
+            padding-top: 8px;
         }
 
         .telemetry-item {
@@ -249,7 +252,7 @@
 
         /* --- NAVIGATION --- */
         nav { 
-            display: flex; gap: 8px; margin: 8px 0; flex-shrink: 0;
+            display: flex; gap: 10px; margin: 12px 0; flex-shrink: 0; /* UX Edit: More gap between tabs */
         }
         
         .nav-item {
@@ -257,8 +260,8 @@
             position: relative;
             background: var(--surface); 
             border: 1px solid var(--border); 
-            padding: 9px 0;
-            font-size: 0.65rem; font-weight: 800;
+            padding: 11px 0; /* UX Edit: Taller tap target */
+            font-size: 0.68rem; font-weight: 800;
             text-transform: uppercase; letter-spacing: 0.5px;
             color: var(--ink-dim); cursor: pointer;
             border-radius: var(--radius);
@@ -315,17 +318,19 @@
         }
 
         /* --- INPUT ZONES --- */
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+        /* UX Edit: Increased vertical gap from 8px to 14px to separate visual groups */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; }
         .field { display: flex; flex-direction: column; }
         
         .field-header {
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 3px; margin-left: 2px;
-            min-height: 18px; 
+            margin-bottom: 5px; /* UX Edit: Lifted labels off the input box */
+            margin-left: 2px;
+            min-height: 20px; 
         }
 
         .field label {
-            font-size: 0.65rem; font-weight: 800; text-transform: uppercase;
+            font-size: 0.68rem; font-weight: 800; text-transform: uppercase;
             letter-spacing: 0.8px; color: var(--ink-dim);
             line-height: 1;
         }
@@ -358,7 +363,8 @@
         .micro-btn {
             background: var(--surface); 
             border: 1px solid var(--border);
-            border-radius: var(--radius); padding: 3px 6px;
+            border-radius: var(--radius); 
+            padding: 4px 8px; /* UX Edit: Larger touch target */
             font-size: 0.58rem; font-weight: 800;
             color: var(--ink-dim); cursor: pointer; letter-spacing: 0.5px;
             box-shadow: var(--bevel-out);
@@ -384,7 +390,7 @@
             background: var(--input-bg);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 5px 10px;
+            padding: 8px 10px; /* UX Edit: Thicker input boxes for Fitts's Law */
             display: flex; align-items: baseline;
             box-shadow: var(--bevel-in);
         }
@@ -398,7 +404,7 @@
 
         input {
             background: none; border: none; width: 100%;
-            font-size: 1.3rem; font-weight: 500; 
+            font-size: 1.35rem; font-weight: 500; /* UX Edit: Slightly larger type */
             font-family: "SF Mono", monospace;
             color: var(--ink); outline: none; padding: 0;
             -webkit-user-select: text; user-select: text;
@@ -413,11 +419,11 @@
 
         /* --- BOUNDARY PANEL --- */
         .boundary-panel {
-            margin-top: 10px;
+            margin-top: 16px; /* UX Edit: Pushed down to group it conceptually away from inputs */
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 8px 12px;
+            padding: 12px 14px;
             box-shadow: var(--bevel-out);
         }
 
@@ -426,27 +432,28 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--border);
-            padding-bottom: 5px;
-            margin-bottom: 6px;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
         }
 
         .boundary-header label {
-            font-size: 0.65rem; font-weight: 800; text-transform: uppercase;
+            font-size: 0.68rem; font-weight: 800; text-transform: uppercase;
             letter-spacing: 1px; color: var(--ink);
         }
 
         .boundary-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 16px; /* UX Edit: More horizontal breathing room */
         }
 
-        .boundary-col { display: flex; flex-direction: column; gap: 3px; }
+        .boundary-col { display: flex; flex-direction: column; gap: 4px; }
 
         .boundary-title {
             font-size: 0.65rem; font-weight: 800; color: var(--accent);
             text-transform: uppercase; letter-spacing: 0.5px;
             border-bottom: 1px solid var(--border); padding-bottom: 2px;
+            margin-bottom: 2px;
         }
 
         .boundary-row { display: flex; justify-content: space-between; align-items: center; }
@@ -473,7 +480,7 @@
             width: 100%; max-width: 440px;
             background: var(--chassis); 
             border-top: 1px solid var(--border);
-            border-radius: 8px 8px 0 0;
+            border-radius: 12px 12px 0 0; /* UX Edit: Softer top radius */
             padding: 20px 20px 30px 20px; 
             transition: transform 0.2s cubic-bezier(0.32, 0.72, 0, 1); 
         }
@@ -508,7 +515,7 @@
         
         .unlock-btn {
             background: transparent; border: 1px solid var(--border);
-            color: var(--ink-dim); padding: 5px; border-radius: var(--radius); 
+            color: var(--ink-dim); padding: 6px; border-radius: var(--radius); 
             cursor: pointer; margin-right: 12px; display: flex; align-items: center; justify-content: center;
         }
         .unlock-btn.active { background: var(--input-bg); color: var(--accent); box-shadow: var(--bevel-deep); }
@@ -517,7 +524,7 @@
         .add-btn {
             flex: 1; background: var(--surface); border: 1px dashed var(--ink-dim);
             color: var(--ink-dim); font-size: 0.65rem; font-weight: 800;
-            padding: 8px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+            padding: 10px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
             border-radius: var(--radius); text-align: center;
         }
 
@@ -526,12 +533,12 @@
         
         .log-item { 
             background: var(--surface); border: 1px solid var(--border); 
-            padding: 10px 12px; margin-bottom: 6px; border-radius: var(--radius); 
+            padding: 12px 14px; margin-bottom: 8px; border-radius: var(--radius); 
             cursor: pointer; display: flex; justify-content: space-between; align-items: center; 
             box-shadow: var(--bevel-out); 
         }
         .log-title { font-size: 0.72rem; font-weight: 800; color: var(--ink); text-transform: uppercase; }
-        .log-date { font-size: 0.6rem; color: var(--ink-dim); font-family: "SF Mono", monospace; margin-top: 2px; }
+        .log-date { font-size: 0.6rem; color: var(--ink-dim); font-family: "SF Mono", monospace; margin-top: 4px; }
         
         .log-textarea { 
             width: 100%; height: 160px; background: var(--input-bg); border: 1px solid var(--border); 
@@ -541,17 +548,18 @@
         .log-title-input { 
             width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border); 
             color: var(--ink); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; 
-            padding: 6px 0; margin-bottom: 10px; outline: none; 
+            padding: 8px 0; margin-bottom: 12px; outline: none; 
         }
 
         footer { 
             display: flex; justify-content: space-between; align-items: center; 
-            border-top: 1px solid var(--border); padding-top: 8px; margin-top: 6px; flex-shrink: 0;
+            border-top: 1px solid var(--border); 
+            padding-top: 10px; margin-top: 12px; flex-shrink: 0;
         }
         
         .footer-btn { 
             background: var(--surface); border: 1px solid var(--border); 
-            padding: 7px 14px; font-size: 0.62rem; font-weight: 800; 
+            padding: 9px 16px; font-size: 0.65rem; font-weight: 800; 
             text-transform: uppercase; letter-spacing: 1px; 
             color: var(--ink-dim); border-radius: var(--radius); cursor: pointer; 
             box-shadow: var(--bevel-out);
@@ -560,7 +568,7 @@
 
         .copyright {
             text-align: center;
-            margin-top: 4px;
+            margin-top: 8px;
             font-size: 0.5rem;
             font-weight: 800;
             text-transform: uppercase;
@@ -675,7 +683,7 @@
                     <div class="boundary-panel">
                         <div class="boundary-header">
                             <label>Collimator Ratio</label>
-                            <div class="input-zone" style="width: 95px; padding: 3px 8px;">
+                            <div class="input-zone" style="width: 100px; padding: 4px 8px;">
                                 <input type="text" inputmode="decimal" pattern="[0-9\.]*" id="collimator" value="16" style="font-size: 1.1rem;">
                                 <span class="unit">:1</span>
                             </div>
@@ -1254,24 +1262,29 @@
             }
         }
 
+        // STRICT MM:SS Formatting Engine
         function formatDisplay(mins) {
             const svgText = document.getElementById("svgTime");
             if (!mins || mins <= 0 || !isFinite(mins) || isNaN(mins)) {
                 if (svgText) svgText.textContent = "00:00";
                 return;
             }
-            let h = Math.floor(mins / 60);
-            let m = Math.floor(mins % 60);
-            let s = Math.round((mins * 60) % 60);
-            if (s >= 60) { s = 0; m++; }
-            if (m >= 60) { m = 0; h++; }
+            
+            // UX Edit: Convert exclusively to Minutes and Seconds
+            let m = Math.floor(mins);
+            let s = Math.round((mins - m) * 60);
+            
+            // Rounding overflow correction
+            if (s >= 60) {
+                s = 0;
+                m++;
+            }
 
-            const hh = h.toString().padStart(2, '0');
             const mm = m.toString().padStart(2, '0');
             const ss = s.toString().padStart(2, '0');
             
             if (svgText) {
-                svgText.textContent = h > 0 ? `${hh}:${mm}:${ss}` : `${mm}:${ss}`;
+                svgText.textContent = `${mm}:${ss}`;
             }
         }
 
